@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Laporan Kehadiran PPB</title>
+  <style>
+    body{font-family:Arial; max-width:1100px; margin:32px auto; padding:0 14px;}
+    table{border-collapse:collapse; width:100%; margin-top:12px;}
+    th,td{border:1px solid #ddd; padding:8px; font-size:14px;}
+    th{background:#f5f5f5;}
+    input{padding:10px; width:100%; box-sizing:border-box; margin-top:6px;}
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+    button{padding:12px 16px; margin-top:12px; cursor:pointer;}
+  </style>
+</head>
+<body>
+  <h2>Laporan Kehadiran PPB</h2>
+
+  <div class="row">
+    <div>
+      <label>Tarikh (YYYY-MM-DD)</label>
+      <input id="tarikh" placeholder="2026-03-02">
+    </div>
+    <div>
+      <label>Tajuk PPB</label>
+      <input id="tajuk" placeholder="Bengkel Kerja SIM ODL-PDP">
+    </div>
+  </div>
+  <button id="btn">Papar Laporan</button>
+
+  <div id="info"></div>
+  <table id="tbl"></table>
+
+<script>
+  const WEB_APP_URL = "PASTE_URL_WEB_APP_DI_SINI";
+  const $ = (id)=>document.getElementById(id);
+
+  $("btn").addEventListener("click", async () => {
+    const tarikh = encodeURIComponent($("tarikh").value.trim());
+    const tajuk = encodeURIComponent($("tajuk").value.trim());
+    const url = `${WEB_APP_URL}?action=report&tarikh=${tarikh}&tajuk=${tajuk}`;
+
+    const res = await fetch(url);
+    const out = await res.json();
+
+    if(!out.ok){ $("info").textContent = out.message; return; }
+
+    $("info").innerHTML = `<p>Jumlah rekod: <b>${out.total}</b></p>`;
+
+    // Paparkan kolum penting bukti kehadiran: Timestamp, TajukPPB, Tarikh, NamaPenuhBukti, NoKP/ID, Email
+    const h = out.header;
+    const data = out.data;
+
+    const pickCols = ["Timestamp","TajukPPB","Tarikh","Tempat","NamaPenuhBukti","NoKP/ID","Email"];
+    const idx = pickCols.map(c => h.indexOf(c));
+
+    let html = "<tr>" + pickCols.map(c=>`<th>${c}</th>`).join("") + "</tr>";
+    data.forEach(r=>{
+      html += "<tr>" + idx.map(i=>`<td>${i>=0 ? (r[i] ?? "") : ""}</td>`).join("") + "</tr>";
+    });
+
+    $("tbl").innerHTML = html;
+  });
+</script>
+</body>
+</html>
