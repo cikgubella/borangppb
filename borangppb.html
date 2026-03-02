@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PPB: Kehadiran & Penilaian (LAM-PT-11-03)</title>
+  <style>
+    body{font-family:Arial,sans-serif; max-width:980px; margin:32px auto; padding:0 14px;}
+    h2,h3{margin:16px 0 8px;}
+    label{display:block; margin-top:10px; font-weight:600;}
+    input,select,textarea{width:100%; padding:10px; margin-top:6px; box-sizing:border-box;}
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+    .card{border:1px solid #ddd; padding:14px; border-radius:10px; margin-top:12px;}
+    table{border-collapse:collapse; width:100%; margin-top:10px;}
+    th,td{border:1px solid #ddd; padding:8px; font-size:14px;}
+    th{background:#f5f5f5;}
+    .ok{color:green; margin-top:10px;}
+    .err{color:#b00020; margin-top:10px;}
+    button{padding:12px 16px; cursor:pointer; margin-top:12px;}
+    small{color:#555;}
+  </style>
+</head>
+<body>
+
+<h2>Rekod Kehadiran & Borang Penilaian PPB (LAM-PT-11-03)</h2>
+
+<div class="card">
+  <h3>Maklumat Program & Bukti Kehadiran</h3>
+
+  <label>Tajuk PPB *</label>
+  <input id="tajukPPB" placeholder="Contoh: Bengkel Kerja SIM ODL-PDP" required />
+
+  <div class="row">
+    <div>
+      <label>Tarikh (YYYY-MM-DD) *</label>
+      <input id="tarikh" placeholder="2026-03-02" required />
+    </div>
+    <div>
+      <label>Tempat</label>
+      <input id="tempat" placeholder="Contoh: IPGKDA / Dewan ..." />
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>Jantina</label>
+      <select id="jantina">
+        <option value="">-- pilih --</option>
+        <option value="Lelaki">Lelaki</option>
+        <option value="Perempuan">Perempuan</option>
+      </select>
+    </div>
+    <div>
+      <label>Email (pilihan)</label>
+      <input id="email" type="email" placeholder="nama@..." />
+    </div>
+  </div>
+
+  <label>Nama Penuh (seperti dalam IC) * <br><small>Ini dijadikan bukti kehadiran.</small></label>
+  <input id="namaPenuhBukti" placeholder="Contoh: AHMAD BIN ALI" required />
+
+  <div class="row">
+    <div>
+      <label>Nama (nama panggilan)</label>
+      <input id="nama" placeholder="Contoh: Ahmad" />
+    </div>
+    <div>
+      <label>No. KP / ID</label>
+      <input id="id" placeholder="Contoh: 900101-01-1234 / ID staf" />
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Skala Penilaian</h3>
+  <p style="margin:6px 0;"><small>TB = Tidak Berkenaan, 1 = Sangat Tidak Bersetuju, 2 = Tidak Setuju, 3 = Kurang Setuju, 4 = Setuju, 5 = Sangat Setuju</small></p>
+
+  <div id="borangPPB"></div>
+</div>
+
+<div class="card">
+  <h3>Cadangan meningkatkan keberkesanan PPB</h3>
+  <textarea id="cadangan" rows="4" placeholder="Tulis cadangan..."></textarea>
+</div>
+
+<div class="card">
+  <h3>Penilaian Penceramah / Fasilitator</h3>
+  <label>Nama Penceramah</label>
+  <input id="namaPenceramah" placeholder="Nama penceramah..." />
+
+  <div id="penceramah"></div>
+</div>
+
+<button id="btnSubmit">Hantar Rekod</button>
+<div id="msg"></div>
+
+<script>
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyNTFOulazEnBcdV19U4ugxCDzdyOi0E346Ni_KTUrAOSDTxF4UmxubN16gsomVy6ET/exec";
+  const $ = (id) => document.getElementById(id);
+
+  const skala = [
+    {v:"TB", t:"TB"},
+    {v:"1", t:"1"},
+    {v:"2", t:"2"},
+    {v:"3", t:"3"},
+    {v:"4", t:"4"},
+    {v:"5", t:"5"},
+  ];
+
+  // Soalan ikut LAM-PT-11-03
+  const seksyenPPB = [
+    { tajuk:"1. Urus Setia dan Pengurusan", items:[
+      "Pendaftaran peserta disediakan",
+      "Maklumat yang disediakan mudah",
+      "Pengurusan teratur",
+      "Urus setia sentiasa membantu saya"
+    ]},
+    { tajuk:"2. Lokasi", items:[
+      "Tempat sesuai",
+      "Dewan sesuai",
+      "Peralatan dan alat tulis disediakan",
+      "Dewan makan bersih dan selesa",
+      "Kualiti makanan baik",
+      "Makanan yang disediakan mencukupi"
+    ]},
+    { tajuk:"3. Personal", items:[
+      "Program ini mampu meningkatkan prestasi kerja saya",
+      "Program ini mampu memberi keyakinan kepada saya dalam memberi perkhidmatan",
+      "Tempoh masa program mencukupi",
+      "Saya bersedia untuk memberi kursus dalaman"
+    ]},
+    { tajuk:"4. Bahan", items:[
+      "Berguna",
+      "Membantu",
+      "Mudah difahami",
+      "Jelas"
+    ]}
+  ];
+
+  const soalanPenceramah = [
+    "Isi kandungan sesuai dengan objektif",
+    "Isi kandungan menepati tajuk",
+    "Isi kandungan mampu meningkatkan percambahan ilmu saya",
+    "Isi kandungan berjaya meningkatkan kemahiran saya",
+    "Isi kandungan membantu saya mengamalkannya dalam tugas seharian",
+    "Penyampaian amat jelas",
+    "Bahasa yang digunakan mudah difahami",
+    "Interaksi penceramah/fasilitator adalah sesuai",
+    "Penceramah/fasilitator bersifat bersedia, yakin dan terbuka",
+    "Penampilan penceramah/fasilitator adalah sesuai dan profesional",
+    "Penceramah/fasilitator menepati masa",
+    "Penceramah/fasilitator menggunakan masa secara optimum"
+  ];
+
+  function buildTable(containerId, sections, prefixKey){
+    const container = $(containerId);
+    let html = "";
+    sections.forEach((sec, si) => {
+      html += `<h4 style="margin:10px 0 6px;">${sec.tajuk}</h4>`;
+      html += `<table><tr><th style="width:60px;">Bil</th><th>Soalan/Perkara</th>${skala.map(s=>`<th style="width:52px;">${s.t}</th>`).join("")}</tr>`;
+      sec.items.forEach((q, qi) => {
+        const key = `${prefixKey}_${si}_${qi}`;
+        html += `<tr>
+          <td>${qi+1}</td>
+          <td>${q}</td>
+          ${skala.map(s=>`
+            <td style="text-align:center;">
+              <input type="radio" name="${key}" value="${s.v}" required>
+            </td>`).join("")}
+        </tr>`;
+      });
+      html += `</table>`;
+    });
+    container.innerHTML = html;
+  }
+
+  // bina seksyen PPB
+  buildTable("borangPPB", seksyenPPB, "ppb");
+
+  // bina jadual penceramah (1 seksyen)
+  (function(){
+    const container = $("penceramah");
+    let html = `<table><tr><th style="width:60px;">Bil</th><th>Soalan/Perkara</th>${["1","2","3","4","5"].map(x=>`<th style="width:52px;">${x}</th>`).join("")}</tr>`;
+    soalanPenceramah.forEach((q, i) => {
+      const key = `penceramah_${i}`;
+      html += `<tr>
+        <td>${i+1}</td>
+        <td>${q}</td>
+        ${["1","2","3","4","5"].map(v=>`
+          <td style="text-align:center;">
+            <input type="radio" name="${key}" value="${v}" required>
+          </td>`).join("")}
+      </tr>`;
+    });
+    html += `</table>`;
+    container.innerHTML = html;
+  })();
+
+  function collectRadios(prefix){
+    const out = {};
+    const radios = document.querySelectorAll(`input[type="radio"][name^="${prefix}_"]:checked`);
+    radios.forEach(r => out[r.name] = r.value);
+    return out;
+  }
+
+  function collectPenceramah(){
+    const out = {};
+    for(let i=0;i<soalanPenceramah.length;i++){
+      const name = `penceramah_${i}`;
+      const checked = document.querySelector(`input[name="${name}"]:checked`);
+      if(!checked) return null;
+      out[name] = checked.value;
+    }
+    return out;
+  }
+
+  $("btnSubmit").addEventListener("click", async () => {
+    $("msg").className = "";
+    $("msg").textContent = "";
+
+    const tajukPPB = $("tajukPPB").value.trim();
+    const tarikh = $("tarikh").value.trim();
+    const namaPenuhBukti = $("namaPenuhBukti").value.trim();
+
+    if(!tajukPPB || !tarikh || !namaPenuhBukti){
+      $("msg").className = "err";
+      $("msg").textContent = "Sila isi Tajuk PPB, Tarikh dan Nama Penuh (Bukti Kehadiran).";
+      return;
+    }
+
+    // kumpul jawapan borang
+    const borangPPB = collectRadios("ppb");
+    const penceramah = collectPenceramah();
+    if(!penceramah){
+      $("msg").className = "err";
+      $("msg").textContent = "Sila lengkapkan penilaian penceramah (semua item).";
+      return;
+    }
+
+    const payload = {
+      tajukPPB,
+      tarikh,
+      tempat: $("tempat").value.trim(),
+      jantina: $("jantina").value,
+      email: $("email").value.trim(),
+      namaPenuhBukti,
+      nama: $("nama").value.trim(),
+      id: $("id").value.trim(),
+      borangPPB,
+      cadangan: $("cadangan").value.trim(),
+      namaPenceramah: $("namaPenceramah").value.trim(),
+      penceramah
+    };
+
+    try{
+      const res = await fetch(WEB_APP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+
+      const out = await res.json();
+      if(out.ok){
+        $("msg").className = "ok";
+        $("msg").textContent = out.message;
+      } else {
+        $("msg").className = "err";
+        $("msg").textContent = out.message || "Gagal simpan rekod.";
+      }
+    } catch(e){
+      $("msg").className = "err";
+      $("msg").textContent = "Ralat rangkaian atau URL Web App tidak betul.";
+    }
+  });
+</script>
+
+</body>
+</html>
